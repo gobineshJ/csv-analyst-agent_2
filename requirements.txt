@@ -1,0 +1,8 @@
+groq
+pandas
+python-dotenv
+pytest
+mcp>=2
+langgraph
+langchain-groq
+langchain-core

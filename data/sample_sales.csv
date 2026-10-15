@@ -1,0 +1,9 @@
+date,category,region,units,sales
+2025-01-05,Electronics,North,10,1200
+2025-01-06,Electronics,South,5,600
+2025-01-07,Clothing,North,20,800
+2025-01-08,Clothing,South,15,600
+2025-01-09,Grocery,North,50,500
+2025-01-10,Grocery,South,40,400
+2025-01-11,Electronics,North,8,960
+2025-01-12,Clothing,North,12,480
