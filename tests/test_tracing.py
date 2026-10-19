@@ -4,12 +4,11 @@ from types import SimpleNamespace as NS
 import pytest
 from langchain_core.messages import AIMessage
 
-from src.agent import run_agent
-from src.langgraph_agent import build_graph, run_agent_langgraph
-from src.tools import CsvTools
-from src.tracing import Budget, BudgetExceeded, TracedClient, TracedTools, Tracer, TracingCallback, summarize
-from tests.fake_llm import FakeChat, ai_call
-from tests.fakes import FakeClient, call, text
+from src.core.agent import run_agent
+from src.core.tools import CsvTools
+from src.frameworks.langgraph_agent import build_graph, run_agent_langgraph
+from src.patterns.tracing import Budget, BudgetExceeded, TracedClient, TracedTools, Tracer, TracingCallback, summarize
+from tests.fakes import FakeChat, FakeClient, ai_call, call, text
 
 
 def with_usage(resp, prompt, completion):

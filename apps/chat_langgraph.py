@@ -1,14 +1,15 @@
+"""The agent as a LangGraph graph; pauses for approval before running code.  python -m apps.chat_langgraph --help"""
 import argparse
 from dotenv import load_dotenv
 load_dotenv()
 
-from src.hitl import console_approver
-from src.langgraph_agent import build_graph, run_agent_langgraph, sqlite_checkpointer
-from src.tools import CsvTools
+from src.core.tools import CsvTools
+from src.frameworks.langgraph_agent import build_graph, run_agent_langgraph, sqlite_checkpointer
+from src.patterns.hitl import console_approver
 
 parser = argparse.ArgumentParser(description="LangGraph CSV agent")
 parser.add_argument("csv", nargs="?", default="data/sample_sales.csv")
-parser.add_argument("--db", help="keep conversation memory in this SQLite file across runs, e.g. langgraph.db")
+parser.add_argument("--db", help="keep conversation memory in this SQLite file across runs, e.g. runtime/langgraph.db")
 parser.add_argument("--thread", default="default", help="conversation id; reuse it to continue a conversation")
 args = parser.parse_args()
 

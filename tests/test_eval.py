@@ -5,8 +5,7 @@ from langchain_core.messages import AIMessage
 
 from eval.run_eval import (CASES, REFUSE, grade, langgraph_case, longmem_case, multi_case, parse_trace,
                            plain_case, plan_case, run_one, structured_case, to_markdown)
-from tests.fake_llm import FakeChat, ai_call
-from tests.fakes import FakeClient, call, text
+from tests.fakes import FakeChat, FakeClient, ai_call, call, text
 
 df = pd.read_csv("data/sample_sales.csv")
 case = {c.id: c for c in CASES}

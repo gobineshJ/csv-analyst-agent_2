@@ -13,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-from src.agent import MODEL, SYSTEM, get_client
+from src.core.agent import MODEL, SYSTEM, get_client
 
 
 class FinalAnswer(BaseModel):
@@ -73,8 +73,8 @@ def finalize(memory, client=None, retries=2, verbose=True):
 
 def run_agent_structured(question, tools, memory=None, client=None, verbose=True, **kwargs):
     """Run the normal agent, then convert its answer. Returns (FinalAnswer or None, text answer)."""
-    from src.agent import run_agent
-    from src.memory import ConversationMemory
+    from src.core.agent import run_agent
+    from src.core.memory import ConversationMemory
 
     memory = memory or ConversationMemory()
     text = run_agent(question, tools, memory=memory, client=client, verbose=verbose, **kwargs)

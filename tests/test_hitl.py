@@ -2,12 +2,11 @@ import json
 
 from langchain_core.messages import AIMessage
 
-from src.agent import run_agent
-from src.hitl import apply_decision, auto_approve
-from src.langgraph_agent import build_graph, resume_langgraph, run_agent_langgraph
-from src.tools import CsvTools
-from tests.fake_llm import FakeChat, ai_call
-from tests.fakes import FakeClient, call, text
+from src.core.agent import run_agent
+from src.core.tools import CsvTools
+from src.frameworks.langgraph_agent import build_graph, resume_langgraph, run_agent_langgraph
+from src.patterns.hitl import apply_decision, auto_approve
+from tests.fakes import FakeChat, FakeClient, ai_call, call, text
 
 csv = CsvTools("data/sample_sales.csv")
 CODE = "result = len(df)"

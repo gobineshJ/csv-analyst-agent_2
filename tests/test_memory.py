@@ -1,4 +1,4 @@
-from src.memory import ConversationMemory, split_turns, extractive_summary
+from src.core.memory import ConversationMemory, split_turns, extractive_summary
 
 
 def turn(q, a, tool=True):

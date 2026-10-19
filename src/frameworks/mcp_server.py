@@ -1,6 +1,6 @@
 """MCP server: exposes the CSV tools over stdio so any MCP client can use them.
 
-Run directly:  python -m src.mcp_server data/sample_sales.csv
+Run directly:  python -m src.frameworks.mcp_server data/sample_sales.csv
 Never print() to stdout here - stdout carries the protocol messages.
 """
 import os
@@ -9,8 +9,8 @@ from typing import Literal
 
 from mcp.server.mcpserver import MCPServer
 
-from src.schemas import RUN_PANDAS_DESCRIPTION
-from src.tools import CsvTools
+from src.core.schemas import RUN_PANDAS_DESCRIPTION
+from src.core.tools import CsvTools
 
 path = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("CSV_PATH", "data/sample_sales.csv")
 csv = CsvTools(path)

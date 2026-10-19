@@ -1,7 +1,7 @@
 import json
-from src.agent import run_agent
-from src.memory import ConversationMemory
-from src.tools import CsvTools
+from src.core.agent import run_agent
+from src.core.memory import ConversationMemory
+from src.core.tools import CsvTools
 from tests.fakes import FakeClient, call, text
 
 tools = CsvTools("data/sample_sales.csv")

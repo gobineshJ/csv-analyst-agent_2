@@ -4,10 +4,12 @@ from pathlib import Path
 
 import matplotlib
 
+from src.paths import OUTPUTS
+
 matplotlib.use("Agg")  # draw to files, never open a window
 import matplotlib.pyplot as plt  # noqa: E402
 
-OUT_DIR = "outputs"
+OUT_DIR = OUTPUTS.as_posix()  # runtime/outputs
 KINDS = ("bar", "line", "pie")
 HOWS = ("sum", "mean", "count", "max", "min")
 

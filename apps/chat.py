@@ -1,17 +1,18 @@
+"""Plain-loop agent chat, with a flag for every stage.  python -m apps.chat --help"""
 import argparse
 from dotenv import load_dotenv
 load_dotenv()
 
-from src.agent import llm_summarizer, run_agent, get_client, MODEL
-from src.hitl import auto_approve, console_approver
-from src.long_memory import LongTermMemory, fingerprint, load_chunks, run_agent_with_long_memory
-from src.memory import ConversationMemory
-from src.multi_agent import run_multi_agent
-from src.reflection import llm_critic, make_reviewer
-from src.schemas import CODE_TOOLS, FIXED_TOOLS, TOOLS
-from src.structured import finalize
-from src.tools import CsvTools
-from src.tracing import TracedClient, TracedTools, Tracer
+from src.core.agent import llm_summarizer, run_agent, get_client, MODEL
+from src.core.memory import ConversationMemory
+from src.core.schemas import CODE_TOOLS, FIXED_TOOLS, TOOLS
+from src.core.tools import CsvTools
+from src.patterns.hitl import auto_approve, console_approver
+from src.patterns.long_memory import LongTermMemory, fingerprint, load_chunks, run_agent_with_long_memory
+from src.patterns.multi_agent import run_multi_agent
+from src.patterns.reflection import llm_critic, make_reviewer
+from src.patterns.structured import finalize
+from src.patterns.tracing import TracedClient, TracedTools, Tracer
 
 parser = argparse.ArgumentParser(description="Plain-loop CSV agent")
 parser.add_argument("csv", nargs="?", default="data/sample_sales.csv")
@@ -22,9 +23,9 @@ parser.add_argument("--critic", action="store_true", help="with --reflect, also 
 parser.add_argument("--structured", action="store_true", help="also print the answer as validated JSON")
 parser.add_argument("--auto-approve", action="store_true", help="run model-written code without asking")
 parser.add_argument("--no-guard", action="store_true", help="turn off the prompt-injection guardrail")
-parser.add_argument("--trace", action="store_true", help="log every LLM/tool call to traces/ and print totals")
+parser.add_argument("--trace", action="store_true", help="log every LLM/tool call to runtime/traces/ and print totals")
 parser.add_argument("--long-memory", action="store_true",
-                    help="remember across runs (memory.db) and use data/data_dictionary.md")
+                    help="remember across runs (runtime/memory.db) and use data/data_dictionary.md")
 parser.add_argument("--multi", action="store_true", help="orchestrator + analyst/chart specialists")
 args = parser.parse_args()
 

@@ -150,14 +150,14 @@ def parse_trace(stdout):
 # Each returns (answer, note). Printed CALL/RESULT lines are captured by run_one.
 
 def _memory(case, client=None):
-    from src.agent import llm_summarizer
-    from src.memory import ConversationMemory
+    from src.core.agent import llm_summarizer
+    from src.core.memory import ConversationMemory
     return ConversationMemory(summarize=llm_summarizer(client), max_tokens=case.memory_budget)
 
 
 def plain_case(case, client=None, **agent_kwargs):
-    from src.agent import run_agent
-    from src.tools import CsvTools
+    from src.core.agent import run_agent
+    from src.core.tools import CsvTools
 
     tools, memory, answer = CsvTools(case.data), _memory(case, client), ""
     for q in case.turns:
@@ -166,25 +166,25 @@ def plain_case(case, client=None, **agent_kwargs):
 
 
 def fixed_case(case, client=None):
-    from src.schemas import FIXED_TOOLS
+    from src.core.schemas import FIXED_TOOLS
     return plain_case(case, client, schemas=FIXED_TOOLS)
 
 
 def code_case(case, client=None):
-    from src.schemas import CODE_TOOLS
+    from src.core.schemas import CODE_TOOLS
     return plain_case(case, client, schemas=CODE_TOOLS)
 
 
 def reflect_case(case, client=None):
-    from src.agent import MODEL, get_client
-    from src.reflection import llm_critic, make_reviewer
+    from src.core.agent import MODEL, get_client
+    from src.patterns.reflection import llm_critic, make_reviewer
     return plain_case(case, client, review=make_reviewer(llm_critic(client or get_client(), MODEL)))
 
 
 def structured_case(case, client=None):
-    from src.agent import run_agent
-    from src.structured import finalize
-    from src.tools import CsvTools
+    from src.core.agent import run_agent
+    from src.patterns.structured import finalize
+    from src.core.tools import CsvTools
 
     tools, memory, answer = CsvTools(case.data), _memory(case, client), ""
     for q in case.turns:
@@ -200,10 +200,10 @@ def mcp_case(case, client=None):
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
-    from src.agent_mcp import run_agent_mcp, to_openai_tools
+    from src.frameworks.agent_mcp import run_agent_mcp, to_openai_tools
 
     async def go():
-        params = StdioServerParameters(command=sys.executable, args=["-m", "src.mcp_server", case.data])
+        params = StdioServerParameters(command=sys.executable, args=["-m", "src.frameworks.mcp_server", case.data])
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
@@ -218,9 +218,9 @@ def mcp_case(case, client=None):
 def langgraph_case(case, llm=None):
     from langchain_core.messages.utils import count_tokens_approximately
 
-    from src.hitl import auto_approve
-    from src.langgraph_agent import build_graph, run_agent_langgraph
-    from src.tools import CsvTools
+    from src.patterns.hitl import auto_approve
+    from src.frameworks.langgraph_agent import build_graph, run_agent_langgraph
+    from src.core.tools import CsvTools
 
     graph = build_graph(CsvTools(case.data), llm=llm, max_context_tokens=case.memory_budget, approve_code=True)
     answer = ""
@@ -231,8 +231,8 @@ def langgraph_case(case, llm=None):
 
 
 def plan_case(case, llm=None):
-    from src.planner import build_planner, run_planner
-    from src.tools import CsvTools
+    from src.patterns.planner import build_planner, run_planner
+    from src.core.tools import CsvTools
 
     graph, answer = build_planner(CsvTools(case.data), llm), ""
     for q in case.turns:  # no memory: each turn is planned on its own
@@ -241,8 +241,8 @@ def plan_case(case, llm=None):
 
 
 def multi_case(case, client=None):
-    from src.multi_agent import run_multi_agent
-    from src.tools import CsvTools
+    from src.patterns.multi_agent import run_multi_agent
+    from src.core.tools import CsvTools
 
     tools, answer, workers = CsvTools(case.data), "", []
     for q in case.turns:
@@ -252,8 +252,8 @@ def multi_case(case, client=None):
 
 
 def longmem_case(case, client=None):
-    from src.long_memory import LongTermMemory, load_chunks, run_agent_with_long_memory
-    from src.tools import CsvTools
+    from src.patterns.long_memory import LongTermMemory, load_chunks, run_agent_with_long_memory
+    from src.core.tools import CsvTools
 
     tools, chunks, answer = CsvTools(case.data), load_chunks("data/data_dictionary.md"), ""
     with tempfile.TemporaryDirectory() as tmp:
@@ -272,11 +272,11 @@ DEFAULT_VERSIONS = ["plain", "mcp", "langgraph"]
 
 def traced(fn, tracer):
     """Give a runner a traced client (Groq versions) or a traced LangChain model (LangGraph versions)."""
-    from src.agent import MODEL, get_client
-    from src.tracing import TracedClient, TracingCallback
+    from src.core.agent import MODEL, get_client
+    from src.patterns.tracing import TracedClient, TracingCallback
 
     if "llm" in inspect.signature(fn).parameters:
-        from src.langgraph_agent import make_llm
+        from src.frameworks.langgraph_agent import make_llm
         return lambda case: fn(case, llm=make_llm([TracingCallback(tracer, MODEL)]))
     return lambda case: fn(case, client=TracedClient(get_client(), tracer))
 
@@ -362,7 +362,7 @@ def main(argv=None):
     for version in versions:
         print(f"Running {version} on {len(cases)} case(s)...", file=sys.stderr)
         for case in cases:
-            from src.tracing import Tracer
+            from src.patterns.tracing import Tracer
             tracer = Tracer(write=False)
             r = run_one(version, traced(RUNNERS[version], tracer), case)
             t = tracer.totals()
@@ -373,7 +373,7 @@ def main(argv=None):
             records.append(r)
             time.sleep(args.delay)
 
-    from src.agent import MODEL
+    from src.core.agent import MODEL
     out = Path(args.out)
     out.write_text(to_markdown(records, versions, MODEL), encoding="utf-8")
     out.with_suffix(".json").write_text(json.dumps(records, indent=2, default=str), encoding="utf-8")

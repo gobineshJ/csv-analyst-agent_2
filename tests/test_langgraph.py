@@ -1,8 +1,8 @@
 from langchain_core.messages import AIMessage
 
-from src.langgraph_agent import build_graph, run_agent_langgraph
-from src.tools import CsvTools
-from tests.fake_llm import FakeChat, ai_call
+from src.core.tools import CsvTools
+from src.frameworks.langgraph_agent import build_graph, run_agent_langgraph
+from tests.fakes import FakeChat, ai_call
 
 csv = CsvTools("data/sample_sales.csv")
 

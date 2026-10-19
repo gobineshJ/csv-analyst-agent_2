@@ -15,9 +15,10 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.types import Command, interrupt
 
-from src.agent import MODEL, SYSTEM, TOOL_JSON_HINT, is_retryable
-from src.hitl import apply_decision
-from src.schemas import RUN_PANDAS_DESCRIPTION
+from src.core.agent import MODEL, SYSTEM, TOOL_JSON_HINT, is_retryable
+from src.core.schemas import RUN_PANDAS_DESCRIPTION
+from src.paths import runtime_file
+from src.patterns.hitl import apply_decision
 
 
 def make_tools(csv, approve_code=False):
@@ -67,12 +68,12 @@ def make_llm(callbacks=None):
     return ChatGroq(model=MODEL, temperature=0, callbacks=callbacks)
 
 
-def sqlite_checkpointer(path="langgraph.db"):
+def sqlite_checkpointer(path=None):
     """Persistent memory: threads (and paused approvals) survive a restart."""
     import sqlite3
 
     from langgraph.checkpoint.sqlite import SqliteSaver
-    return SqliteSaver(sqlite3.connect(path, check_same_thread=False))
+    return SqliteSaver(sqlite3.connect(path or runtime_file("langgraph.db"), check_same_thread=False))
 
 
 def build_graph(csv, llm=None, max_context_tokens=3000, approve_code=False, checkpointer=None):

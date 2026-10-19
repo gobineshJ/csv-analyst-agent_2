@@ -7,12 +7,12 @@ It says nothing about how the three behave with a live model. Fill in the last s
 
 | File | Lines | What it contains |
 |------|-------|------------------|
-| `src/agent.py` | 64 | loop, tool execution, client setup, LLM summarizer |
-| `src/agent_mcp.py` | 45 | loop, tool execution through MCP |
-| `src/langgraph_agent.py` | 70 | tool definitions, graph, run helper |
-| `src/schemas.py` | 77 | tool descriptions for the plain loop |
-| `src/mcp_server.py` | 51 | the same four tools as an MCP server |
-| `src/memory.py` | 66 | memory, used by the plain and MCP versions |
+| `src/core/agent.py` | 64 | loop, tool execution, client setup, LLM summarizer |
+| `src/frameworks/agent_mcp.py` | 45 | loop, tool execution through MCP |
+| `src/frameworks/langgraph_agent.py` | 70 | tool definitions, graph, run helper |
+| `src/core/schemas.py` | 77 | tool descriptions for the plain loop |
+| `src/frameworks/mcp_server.py` | 51 | the same four tools as an MCP server |
+| `src/core/memory.py` | 66 | memory, used by the plain and MCP versions |
 
 LangGraph is not shorter here. Its 70 lines include about 30 lines of tool definitions, but the loop itself and
 message storage are handled by the framework.

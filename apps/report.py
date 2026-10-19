@@ -1,17 +1,17 @@
 """Autonomous report agent: give it a goal and it works through the steps on its own.
 
-    python main_report.py
-    python main_report.py --goal "Compare the North and South regions" --max-calls 40
-    python main_report.py   # again after a crash or budget stop: resumes from outputs/checkpoint.json
+    python -m apps.report
+    python -m apps.report --goal "Compare the North and South regions" --max-calls 40
+    python -m apps.report   # again after a crash or budget stop: resumes from runtime/outputs/checkpoint.json
 """
 import argparse
 from dotenv import load_dotenv
 load_dotenv()
 
-from src.autonomous import run_autonomous
-from src.hitl import auto_approve
-from src.tools import CsvTools
-from src.tracing import Budget
+from src.core.tools import CsvTools
+from src.patterns.autonomous import run_autonomous
+from src.patterns.hitl import auto_approve
+from src.patterns.tracing import Budget
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("csv", nargs="?", default="data/sample_sales.csv")

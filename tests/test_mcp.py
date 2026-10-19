@@ -6,12 +6,12 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from src.agent_mcp import result_text, run_agent_mcp, to_openai_tools
-from src.tools import CsvTools
+from src.core.tools import CsvTools
+from src.frameworks.agent_mcp import result_text, run_agent_mcp, to_openai_tools
 from tests.fakes import FakeClient, call, text
 
 PARAMS = StdioServerParameters(command=sys.executable,
-                               args=["-m", "src.mcp_server", "data/sample_sales.csv"])
+                               args=["-m", "src.frameworks.mcp_server", "data/sample_sales.csv"])
 
 
 def with_session(fn):

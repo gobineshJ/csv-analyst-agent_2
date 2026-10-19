@@ -1,12 +1,12 @@
 """Stage 10: the agent as a web app (FastAPI + one HTML page).
 
-    python main_web.py            then open http://127.0.0.1:8000
+    python -m apps.web            then open http://127.0.0.1:8000
 
 What changes when an agent leaves the terminal:
 
 - No blocking for a human. The CLI waits on input() for an approval; a web server can't hold a
   request open while someone thinks. So the LangGraph agent pauses at interrupt(), its state is
-  saved in SQLite (web.db), the HTTP response ends with an "approval" event, and a LATER request
+  saved in SQLite (runtime/web.db), the HTTP response ends with an "approval" event, and a LATER request
   (POST /decide) resumes it. This is why stage 5 used interrupt() and stage 8 added SqliteSaver.
 - Streaming. Agent runs take seconds, so events (tool calls, results, the answer) are sent as
   they happen using Server-Sent Events, from the same stream_events() the CLI prints.
@@ -28,10 +28,11 @@ from fastapi.responses import FileResponse, StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 
-from src.agent import MODEL
-from src.langgraph_agent import build_graph, make_llm, sqlite_checkpointer, stream_events
-from src.tools import CsvTools
-from src.tracing import Tracer, TracingCallback
+from src.core.agent import MODEL
+from src.core.tools import CsvTools
+from src.frameworks.langgraph_agent import build_graph, make_llm, sqlite_checkpointer, stream_events
+from src.paths import runtime_file
+from src.patterns.tracing import Tracer, TracingCallback
 
 PAGE = Path(__file__).parent / "static" / "index.html"
 
@@ -50,10 +51,11 @@ class Decision(BaseModel):
     reason: str | None = None
 
 
-def create_app(data_dir="data", db_path="web.db", llm=None):
+def create_app(data_dir="data", db_path=None, llm=None):
     """llm: a LangChain chat model (tests pass a fake); default is ChatGroq."""
     app = FastAPI(title="CSV Analyst Agent")
     datasets = {p.name: p for p in sorted(Path(data_dir).glob("*.csv"))}
+    db_path = db_path or runtime_file("web.db")
     db = sqlite3.connect(db_path, check_same_thread=False)
     db.execute("CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, csv TEXT, title TEXT, created REAL)")
     checkpointer = sqlite_checkpointer(db_path)

@@ -3,9 +3,9 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from src.memory import ConversationMemory
-from src.structured import FinalAnswer, finalize, run_agent_structured
-from src.tools import CsvTools
+from src.core.memory import ConversationMemory
+from src.core.tools import CsvTools
+from src.patterns.structured import FinalAnswer, finalize, run_agent_structured
 from tests.fakes import FakeClient, call, text
 
 GOOD = {"answerable": True, "answer": "Total sales are 5540.", "value": 5540, "unit": "sales",

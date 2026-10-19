@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
-from src.web_app import create_app
-from tests.fake_llm import FakeChat, ai_call
+from src.web.app import create_app
+from tests.fakes import FakeChat, ai_call
 
 CODE = "result = len(df)"
 

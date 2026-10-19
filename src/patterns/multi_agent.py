@@ -17,9 +17,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from src.agent import MODEL, SYSTEM, get_client, run_agent
-from src.schemas import CHART_TOOLS, TOOLS
-from src.structured import ask_json
+from src.core.agent import MODEL, SYSTEM, get_client, run_agent
+from src.core.schemas import CHART_TOOLS, TOOLS
+from src.patterns.structured import ask_json
 
 WORKERS = {
     "analyst": (SYSTEM + " You are the data analyst on a team. Do only the task you are given and "

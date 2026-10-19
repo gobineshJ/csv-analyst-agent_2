@@ -23,7 +23,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field, ValidationError
 
-from src.langgraph_agent import build_graph, make_llm, run_agent_langgraph
+from src.frameworks.langgraph_agent import build_graph, make_llm, run_agent_langgraph
 
 
 class Plan(BaseModel):

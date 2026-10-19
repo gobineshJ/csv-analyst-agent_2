@@ -1,8 +1,8 @@
 import pandas as pd
 
-from src.charts import make_chart
-from src.guardrails import sanitize
-from src.sandbox import run_code
+from src.core.charts import make_chart
+from src.core.sandbox import run_code
+from src.patterns.guardrails import sanitize
 
 MAX_ROWS = 20  # keep tool output small so it doesn't flood the context
 

@@ -2,8 +2,8 @@ import json
 import os
 from pathlib import Path
 
-from src.multi_agent import run_multi_agent
-from src.tools import CsvTools
+from src.core.tools import CsvTools
+from src.patterns.multi_agent import run_multi_agent
 from tests.fakes import FakeClient, call, text
 
 CSV = os.path.abspath("data/sample_sales.csv")
@@ -21,16 +21,16 @@ def test_single_analyst_task_skips_the_synthesizer():
 
 
 def test_orchestrator_delegates_to_isolated_specialists(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)  # charts are saved under ./outputs
+    monkeypatch.chdir(tmp_path)  # charts are saved under ./runtime/outputs
     client = FakeClient([
         plan(("analyst", "Compute total sales by category"), ("chart", "Bar chart of sales by category")),
         call("aggregate", '{"column":"sales","how":"sum","group_by":"category"}'), text("Electronics 2760"),
-        call("make_chart", '{"kind":"bar","x":"category","y":"sales"}'), text("Saved outputs/sum_of_sales_by_category.png"),
-        text("Electronics leads with 2760. Chart: outputs/sum_of_sales_by_category.png"),
+        call("make_chart", '{"kind":"bar","x":"category","y":"sales"}'), text("Saved runtime/outputs/sum_of_sales_by_category.png"),
+        text("Electronics leads with 2760. Chart: runtime/outputs/sum_of_sales_by_category.png"),
     ])
     answer, reports = run_multi_agent("Which category leads? Show a chart.", CsvTools(CSV), client=client, verbose=False)
     assert "2760" in answer and [r["worker"] for r in reports] == ["analyst", "chart"]
-    assert Path("outputs/sum_of_sales_by_category.png").exists()
+    assert Path("runtime/outputs/sum_of_sales_by_category.png").exists()
     # The chart specialist starts fresh: it sees its own task, not the analyst's work or the user's question.
     chart_first = client.requests[3]
     assert [m["content"] for m in chart_first if m["role"] == "user"] == ["Bar chart of sales by category"]

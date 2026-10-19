@@ -1,8 +1,8 @@
 import json
 from groq import Groq
-from src.hitl import RISKY_TOOLS, apply_decision
-from src.memory import ConversationMemory
-from src.schemas import TOOLS
+from src.core.memory import ConversationMemory
+from src.core.schemas import TOOLS
+from src.patterns.hitl import RISKY_TOOLS, apply_decision
 
 MODEL = "openai/gpt-oss-120b"  # check Groq's docs for current tool-capable models
 SYSTEM = ("You analyse a CSV using the provided tools. Only state numbers that tools returned; "

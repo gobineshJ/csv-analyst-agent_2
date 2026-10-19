@@ -1,7 +1,7 @@
 import pytest
 
-from src.sandbox import check_code, child_env, run_code
-from src.tools import CsvTools
+from src.core.sandbox import check_code, child_env, run_code
+from src.core.tools import CsvTools
 
 P = "data/sample_sales.csv"
 

@@ -1,9 +1,9 @@
 import json
 from types import SimpleNamespace as NS
 
-from src.agent import REVIEW_PREFIX, run_agent
-from src.reflection import llm_critic, make_reviewer, ungrounded_numbers
-from src.tools import CsvTools
+from src.core.agent import REVIEW_PREFIX, run_agent
+from src.core.tools import CsvTools
+from src.patterns.reflection import llm_critic, make_reviewer, ungrounded_numbers
 from tests.fakes import FakeClient, call, text
 
 tools = CsvTools("data/sample_sales.csv")

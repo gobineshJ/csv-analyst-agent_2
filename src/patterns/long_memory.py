@@ -25,7 +25,8 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from src.agent import SYSTEM, run_agent
+from src.core.agent import SYSTEM, run_agent
+from src.paths import runtime_file
 
 STOPWORDS = set("a an and are as at be by for from has have how i in is it its me my of on or our "
                 "please show tell than that the their this to was were what when where which who "
@@ -67,8 +68,8 @@ def load_chunks(path):
 
 
 class LongTermMemory:
-    def __init__(self, db_path="memory.db"):
-        self.db = sqlite3.connect(db_path)
+    def __init__(self, db_path=None):
+        self.db = sqlite3.connect(db_path or runtime_file("memory.db"))
         self.db.execute("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, dataset TEXT, "
                         "kind TEXT, text TEXT, created REAL)")
 

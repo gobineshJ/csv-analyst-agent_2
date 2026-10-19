@@ -1,11 +1,10 @@
 from langchain_core.messages import AIMessage
 
-from src.langgraph_agent import build_graph, resume_langgraph, run_agent_langgraph, sqlite_checkpointer
-from src.long_memory import (LongTermMemory, bm25_rank, build_system, fingerprint, load_chunks,
-                             run_agent_with_long_memory)
-from src.tools import CsvTools
-from tests.fake_llm import FakeChat, ai_call
-from tests.fakes import FakeClient, text
+from src.core.tools import CsvTools
+from src.frameworks.langgraph_agent import build_graph, resume_langgraph, run_agent_langgraph, sqlite_checkpointer
+from src.patterns.long_memory import (LongTermMemory, bm25_rank, build_system, fingerprint, load_chunks,
+                                      run_agent_with_long_memory)
+from tests.fakes import FakeChat, FakeClient, ai_call, text
 
 CSV = "data/sample_sales.csv"
 chunks = load_chunks("data/data_dictionary.md")

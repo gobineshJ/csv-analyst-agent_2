@@ -1,6 +1,6 @@
-from src.agent import run_agent
-from src.guardrails import REPLACEMENT, looks_like_injection, sanitize
-from src.tools import CsvTools
+from src.core.agent import run_agent
+from src.core.tools import CsvTools
+from src.patterns.guardrails import REPLACEMENT, looks_like_injection, sanitize
 from tests.fakes import FakeClient, call, text
 
 INJECTED = "data/injected_sales.csv"

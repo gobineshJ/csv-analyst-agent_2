@@ -6,9 +6,9 @@ and tools are run with session.call_tool() instead of calling CsvTools directly.
 import asyncio
 import json
 
-from src.agent import SYSTEM, chat, get_client
-from src.hitl import RISKY_TOOLS, apply_decision
-from src.memory import ConversationMemory
+from src.core.agent import SYSTEM, chat, get_client
+from src.core.memory import ConversationMemory
+from src.patterns.hitl import RISKY_TOOLS, apply_decision
 
 
 def to_openai_tools(mcp_tools):

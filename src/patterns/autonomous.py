@@ -1,10 +1,10 @@
 """Autonomy: give the agent a goal, not a question, and let it work through many steps alone.
 
     goal -> plan tasks -> [approve plan?] -> run each task (analyst / chart specialist)
-         -> write report -> check every number against the task results -> outputs/report.md
+         -> write report -> check every number against the task results -> runtime/outputs/report.md
 
 An agent that runs unattended needs machinery that a chat agent can skip:
-- Checkpointing: progress is saved to outputs/checkpoint.json after every task. If the run
+- Checkpointing: progress is saved to runtime/outputs/checkpoint.json after every task. If the run
   crashes, hits a rate limit or runs out of budget, running again resumes where it stopped.
 - Retries with backoff: a failed task is retried (1 s, 2 s, ...) before being marked FAILED;
   one failed task doesn't kill the report.
@@ -24,12 +24,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationInfo, model_validator
 
-from src.agent import MODEL, get_client
-from src.charts import OUT_DIR
-from src.multi_agent import run_specialist
-from src.reflection import ungrounded_numbers
-from src.structured import ask_json
-from src.tracing import BudgetExceeded, TracedClient, Tracer
+from src.core.agent import MODEL, get_client
+from src.core.charts import OUT_DIR
+from src.patterns.multi_agent import run_specialist
+from src.patterns.reflection import ungrounded_numbers
+from src.patterns.structured import ask_json
+from src.patterns.tracing import BudgetExceeded, TracedClient, Tracer
 
 
 class ReportTask(BaseModel):
@@ -89,7 +89,7 @@ def run_autonomous(goal, tools, client=None, out_dir=OUT_DIR, budget=None, appro
     """Work towards the goal. Returns the final state dict (status, results, report_path, totals)."""
     out = Path(out_dir)
     ckpt = out / "checkpoint.json"
-    tracer = Tracer(budget=budget, out_dir=out / "traces")
+    tracer = Tracer(budget=budget)
     llm = TracedClient(client or get_client(), tracer)
     state = load_state(ckpt, goal)
 
@@ -160,7 +160,7 @@ def write_report(goal, state, llm, out, log):
         if still := ungrounded_numbers(report, [results], goal):
             report += ("\n\n---\n**Unverified:** these numbers could not be traced to a tool result: "
                        + ", ".join(f"{n:g}" for n in still))
-    # Charts are saved as outputs/<name>.png; the report lives in outputs/ too, so link relatively.
+    # Charts are saved in OUT_DIR; the report lives there too, so link relatively.
     report = report.replace(f"]({Path(OUT_DIR).as_posix()}/", "](")
     path = out / "report.md"
     path.write_text(report, encoding="utf-8")

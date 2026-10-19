@@ -1,9 +1,9 @@
 .venv/
+venv/
 .env
 __pycache__/
 .pytest_cache/
-venv/
-outputs/
-traces/
-*.db
+
+# everything the app generates (databases, charts, reports, traces)
+runtime/
 eval/results.json

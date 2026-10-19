@@ -5,8 +5,8 @@ Nothing in the agent code changes. Tracing is added from the outside:
 - TracedTools wraps CsvTools (every version, including LangGraph, calls tools through it).
 - TracingCallback plugs into LangChain/LangGraph models through the callback system.
 
-Every event is one JSON line in traces/<run_id>.jsonl, so a run can be inspected afterwards:
-    python -m src.tracing traces/<run_id>.jsonl
+Every event is one JSON line in runtime/traces/<run_id>.jsonl, so a run can be inspected afterwards:
+    python -m src.patterns.tracing runtime/traces/<run_id>.jsonl
 
 The same wrapper enforces a Budget (max LLM calls / tokens / seconds), which is what keeps
 an autonomous agent from running up a bill (see autonomous.py).
@@ -22,6 +22,8 @@ from pathlib import Path
 from types import SimpleNamespace as NS
 
 from langchain_core.callbacks import BaseCallbackHandler
+
+from src.paths import TRACES
 
 # US$ per 1M tokens (input, output). Placeholder values: check Groq's pricing page and update.
 PRICES = {"openai/gpt-oss-120b": (0.15, 0.75)}
@@ -46,7 +48,7 @@ class Budget:
 
 
 class Tracer:
-    def __init__(self, run_id=None, out_dir="traces", budget=None, write=True):
+    def __init__(self, run_id=None, out_dir=TRACES, budget=None, write=True):
         self.run_id = run_id or time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6]
         self.events, self.started, self.budget = [], time.time(), budget
         self.path = Path(out_dir) / f"{self.run_id}.jsonl" if write else None

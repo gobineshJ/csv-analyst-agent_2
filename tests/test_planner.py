@@ -2,9 +2,9 @@ import json
 
 from langchain_core.messages import AIMessage
 
-from src.planner import build_planner, run_planner
-from src.tools import CsvTools
-from tests.fake_llm import FakeChat, ai_call
+from src.core.tools import CsvTools
+from src.patterns.planner import build_planner, run_planner
+from tests.fakes import FakeChat, ai_call
 
 csv = CsvTools("data/sample_sales.csv")
 

@@ -1,3 +1,4 @@
+"""The agent as an MCP client; the tools run in an MCP server subprocess.  python -m apps.chat_mcp [csv]"""
 import asyncio
 import sys
 from dotenv import load_dotenv
@@ -6,16 +7,16 @@ load_dotenv()
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from src.agent import llm_summarizer
-from src.agent_mcp import run_agent_mcp, to_openai_tools
-from src.hitl import console_approver
-from src.memory import ConversationMemory
+from src.core.agent import llm_summarizer
+from src.core.memory import ConversationMemory
+from src.frameworks.agent_mcp import run_agent_mcp, to_openai_tools
+from src.patterns.hitl import console_approver
 
 
 async def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "data/sample_sales.csv"
     # The agent starts the MCP server as a subprocess and talks to it over stdio.
-    params = StdioServerParameters(command=sys.executable, args=["-m", "src.mcp_server", path])
+    params = StdioServerParameters(command=sys.executable, args=["-m", "src.frameworks.mcp_server", path])
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

@@ -1,7 +1,7 @@
 # Evaluation results
 
 Fill this in after running the agent. For each question, compute the correct answer in pandas yourself.
-Run the same questions through each version (`main.py`, `main_mcp.py`, `main_langgraph.py`).
+Run the same questions through each version (`python -m eval.run_eval` does this automatically).
 
 | Question | Version | Agent answer | Correct (pandas) | Match? | Notes |
 |----------|---------|--------------|------------------|--------|-------|

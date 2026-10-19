@@ -1,4 +1,4 @@
-from src.tools import CsvTools
+from src.core.tools import CsvTools
 
 t = CsvTools("data/sample_sales.csv")
 
