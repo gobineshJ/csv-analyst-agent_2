@@ -6,3 +6,6 @@ mcp>=2
 langgraph
 langchain-groq
 langchain-core
+pydantic>=2
+matplotlib
+langgraph-checkpoint-sqlite

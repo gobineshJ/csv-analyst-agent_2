@@ -6,7 +6,8 @@ and tools are run with session.call_tool() instead of calling CsvTools directly.
 import asyncio
 import json
 
-from src.agent import MODEL, SYSTEM, get_client
+from src.agent import SYSTEM, chat, get_client
+from src.hitl import RISKY_TOOLS, apply_decision
 from src.memory import ConversationMemory
 
 
@@ -21,14 +22,14 @@ def result_text(result):
     return "".join(c.text for c in result.content if c.type == "text")
 
 
-async def run_agent_mcp(question, session, tools, max_steps=8, verbose=True, memory=None, client=None):
+async def run_agent_mcp(question, session, tools, max_steps=8, verbose=True, memory=None, client=None,
+                        approve=None):
     client = client or get_client()
     memory = memory or ConversationMemory()
     memory.add({"role": "user", "content": question})
     answer = "Stopped: hit the step limit."
     for _ in range(max_steps):
-        resp = await asyncio.to_thread(client.chat.completions.create, model=MODEL,
-                                       messages=memory.build(SYSTEM), tools=tools, max_tokens=1024)
+        resp = await asyncio.to_thread(chat, client, memory.build(SYSTEM), tools)
         msg = resp.choices[0].message
         if not msg.tool_calls:
             answer = msg.content or ""
@@ -45,7 +46,12 @@ async def run_agent_mcp(question, session, tools, max_steps=8, verbose=True, mem
                 args = json.loads(tc.function.arguments or "{}")
                 if verbose:
                     print(f"CALL   {name} {args}  (via MCP)")
-                text = result_text(await session.call_tool(name, args))
+                rejected = None
+                if approve and name in RISKY_TOOLS:  # the approver may block on input(), so run it off the loop
+                    decision = await asyncio.to_thread(approve, {"tool": name, "args": args})
+                    args, rejected = apply_decision(decision, args)
+                text = (json.dumps({"error": rejected}) if rejected
+                        else result_text(await session.call_tool(name, args)))
             except Exception as e:
                 text = json.dumps({"error": str(e)})
             if verbose:

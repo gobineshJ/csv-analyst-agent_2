@@ -8,6 +8,7 @@ from mcp.client.stdio import stdio_client
 
 from src.agent import llm_summarizer
 from src.agent_mcp import run_agent_mcp, to_openai_tools
+from src.hitl import console_approver
 from src.memory import ConversationMemory
 
 
@@ -26,7 +27,8 @@ async def main():
                 q = (await asyncio.to_thread(input, "\nAsk a question (or 'quit'): ")).strip()
                 if q.lower() in ("quit", "exit", ""):
                     break
-                print("\nANSWER:", await run_agent_mcp(q, session, tools, memory=memory))
+                print("\nANSWER:", await run_agent_mcp(q, session, tools, memory=memory,
+                                                         approve=console_approver))
 
 
 asyncio.run(main())

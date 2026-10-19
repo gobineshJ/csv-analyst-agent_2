@@ -23,11 +23,11 @@ def with_session(fn):
     return asyncio.run(runner())
 
 
-def test_server_lists_the_four_tools_with_enum():
+def test_server_lists_the_tools_with_enum():
     async def go(s):
         return (await s.list_tools()).tools
     tools = {t.name: t for t in with_session(go)}
-    assert set(tools) == {"describe_data", "aggregate", "filter_rows", "top_n"}
+    assert set(tools) == {"describe_data", "aggregate", "filter_rows", "top_n", "run_pandas"}
     assert tools["aggregate"].input_schema["properties"]["how"]["enum"] == ["sum", "mean", "count", "max", "min"]
     assert to_openai_tools(tools.values())[0]["type"] == "function"
 

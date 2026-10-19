@@ -1,22 +1,26 @@
 """The same CSV agent rebuilt with LangGraph, for comparison with agent.py.
 
 LangGraph supplies: the loop (graph edges), tool execution (ToolNode), message
-history across questions (checkpointer), and message trimming (trim_messages).
+history across questions (checkpointer), message trimming (trim_messages), and
+pausing for a human (interrupt) with the state saved until the decision arrives.
 """
 from typing import Literal
 
-from langchain_core.messages import AIMessage, SystemMessage, ToolMessage, trim_messages
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage, trim_messages
 from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.types import Command, interrupt
 
-from src.agent import MODEL, SYSTEM
+from src.agent import MODEL, SYSTEM, TOOL_JSON_HINT
+from src.hitl import apply_decision
+from src.schemas import RUN_PANDAS_DESCRIPTION
 
 
-def make_tools(csv):
+def make_tools(csv, approve_code=False):
     """Wrap the same CsvTools methods as LangChain tools. Docstrings become the descriptions."""
 
     @tool
@@ -42,14 +46,39 @@ def make_tools(csv):
         """Return the top N rows sorted by a column (descending by default)."""
         return csv.top_n(column, n, ascending)
 
-    return [describe_data, aggregate, filter_rows, top_n]
+    @tool(description=RUN_PANDAS_DESCRIPTION)
+    def run_pandas(code: str) -> dict:
+        if approve_code:
+            # Pauses the whole graph here. The state is saved by the checkpointer, and
+            # graph.stream(Command(resume=decision)) continues from this line, with
+            # interrupt() returning the decision. (On resume the tool runs again from the top.)
+            decision = interrupt({"tool": "run_pandas", "args": {"code": code}})
+            args, rejected = apply_decision(decision, {"code": code})
+            if rejected:
+                return {"error": rejected}
+            code = args["code"]
+        return csv.run_pandas(code)
+
+    return [describe_data, aggregate, filter_rows, top_n, run_pandas]
 
 
-def build_graph(csv, llm=None, max_context_tokens=3000):
-    tools = make_tools(csv)
-    if llm is None:
-        from langchain_groq import ChatGroq  # imported here so tests need no API key
-        llm = ChatGroq(model=MODEL, temperature=0)
+def make_llm(callbacks=None):
+    from langchain_groq import ChatGroq  # imported here so tests need no API key
+    return ChatGroq(model=MODEL, temperature=0, callbacks=callbacks)
+
+
+def sqlite_checkpointer(path="langgraph.db"):
+    """Persistent memory: threads (and paused approvals) survive a restart."""
+    import sqlite3
+
+    from langgraph.checkpoint.sqlite import SqliteSaver
+    return SqliteSaver(sqlite3.connect(path, check_same_thread=False))
+
+
+def build_graph(csv, llm=None, max_context_tokens=3000, approve_code=False, checkpointer=None):
+    """checkpointer: where thread state lives. Default MemorySaver (RAM, lost on exit)."""
+    tools = make_tools(csv, approve_code)
+    llm = llm or make_llm()
     model = llm.bind_tools(tools)
 
     def call_model(state: MessagesState):
@@ -60,7 +89,14 @@ def build_graph(csv, llm=None, max_context_tokens=3000):
         if not view:  # the latest turn alone is over budget: send it anyway
             last_human = max(i for i, m in enumerate(state["messages"]) if m.type == "human")
             view = state["messages"][last_human:]
-        return {"messages": [model.invoke([SystemMessage(SYSTEM)] + view)]}
+        messages = [SystemMessage(SYSTEM)] + view
+        try:
+            reply = model.invoke(messages)
+        except Exception as e:  # broken tool-call JSON: same one retry as agent.chat()
+            if "tool_use_failed" not in str(e):
+                raise
+            reply = model.invoke(messages + [HumanMessage(TOOL_JSON_HINT)])
+        return {"messages": [reply]}
 
     graph = StateGraph(MessagesState)
     graph.add_node("model", call_model)
@@ -68,16 +104,39 @@ def build_graph(csv, llm=None, max_context_tokens=3000):
     graph.add_edge(START, "model")
     graph.add_conditional_edges("model", tools_condition)  # -> "tools" if tool calls, else END
     graph.add_edge("tools", "model")
-    return graph.compile(checkpointer=MemorySaver())
+    return graph.compile(checkpointer=checkpointer or MemorySaver())
 
 
-def run_agent_langgraph(question, graph, thread_id="default", max_steps=8, verbose=True):
+def run_agent_langgraph(question, graph, thread_id="default", max_steps=8, verbose=True, ask=None):
+    """ask(request) -> decision answers interrupts (see hitl.py). Without it, a paused
+    graph is left waiting and the request is returned, so a caller can resume it later
+    with resume_langgraph()."""
+    return _run(graph, {"messages": [("user", question)]}, thread_id, max_steps, verbose, ask)
+
+
+def resume_langgraph(graph, decision, thread_id="default", max_steps=8, verbose=True, ask=None):
+    """Continue a graph that is paused at an interrupt, e.g. after a human decided in a UI."""
+    return _run(graph, Command(resume=decision), thread_id, max_steps, verbose, ask)
+
+
+def _run(graph, inputs, thread_id, max_steps, verbose, ask):
+    answer, pending = _stream(graph, inputs, thread_id, max_steps, verbose)
+    while pending is not None and ask is not None:
+        answer, pending = _stream(graph, Command(resume=ask(pending)), thread_id, max_steps, verbose)
+    return answer if pending is None else f"Waiting for approval: {pending}"
+
+
+def _stream(graph, inputs, thread_id, max_steps, verbose):
+    """Run the graph until it finishes or pauses. Returns (answer, interrupt request or None)."""
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 2 * max_steps + 1}
-    answer = "Stopped: hit the step limit."
+    answer, pending = "Stopped: hit the step limit.", None
     try:
-        for update in graph.stream({"messages": [("user", question)]}, config, stream_mode="updates"):
+        for update in graph.stream(inputs, config, stream_mode="updates"):
+            if "__interrupt__" in update:
+                pending = update["__interrupt__"][0].value
+                continue
             for node_output in update.values():
-                for m in node_output["messages"]:
+                for m in (node_output or {}).get("messages", []):
                     if isinstance(m, AIMessage):
                         for tc in m.tool_calls:
                             if verbose:
@@ -94,4 +153,4 @@ def run_agent_langgraph(question, graph, thread_id="default", max_steps=8, verbo
             closing = [ToolMessage("Stopped: step limit reached before this tool ran.",
                                    tool_call_id=tc["id"]) for tc in last.tool_calls]
             graph.update_state(config, {"messages": closing + [AIMessage(answer)]})
-    return answer
+    return answer, pending

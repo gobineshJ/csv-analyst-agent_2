@@ -5,7 +5,16 @@ parameter types directly affect which tool it picks and how it calls it.
 
 ANTHROPIC_TOOLS is the base definition. TOOLS converts it to the
 OpenAI-style format used by Groq (and many other providers).
+FIXED_TOOLS and CODE_TOOLS are subsets, used to compare the two styles in the eval.
 """
+
+RUN_PANDAS_DESCRIPTION = (
+    "Run Python/pandas code on the CSV for questions the other tools cannot answer "
+    "(several filters, dates, derived values, percentages). The data is in `df` and pandas is `pd`. "
+    "No imports, no file access. Assign the final answer to `result` (a number, string, "
+    "Series or DataFrame); at most 20 rows are returned. Example: "
+    "result = df[df.region == 'North'].groupby('category').sales.mean()"
+)
 
 ANTHROPIC_TOOLS = [
     {
@@ -61,6 +70,15 @@ ANTHROPIC_TOOLS = [
             "required": ["column"],
         },
     },
+    {
+        "name": "run_pandas",
+        "description": RUN_PANDAS_DESCRIPTION,
+        "input_schema": {
+            "type": "object",
+            "properties": {"code": {"type": "string", "description": "pandas code that sets `result`"}},
+            "required": ["code"],
+        },
+    },
 ]
 
 # OpenAI / Groq format: same content, different wrapper.
@@ -75,3 +93,27 @@ TOOLS = [
     }
     for t in ANTHROPIC_TOOLS
 ]
+FIXED_TOOLS = [t for t in TOOLS if t["function"]["name"] != "run_pandas"]
+CODE_TOOLS = [t for t in TOOLS if t["function"]["name"] in ("describe_data", "run_pandas")]
+
+# Only given to the chart specialist (multi_agent.py), so the other versions are unchanged.
+MAKE_CHART = {
+    "type": "function",
+    "function": {
+        "name": "make_chart",
+        "description": ("Save a chart of one column aggregated by another as a PNG. Returns the file path "
+                        "and the plotted numbers; describe the chart using those numbers."),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "kind": {"type": "string", "enum": ["bar", "line", "pie"]},
+                "x": {"type": "string", "description": "column to group by (the categories)"},
+                "y": {"type": "string", "description": "numeric column to aggregate"},
+                "how": {"type": "string", "enum": ["sum", "mean", "count", "max", "min"]},
+                "title": {"type": "string"},
+            },
+            "required": ["kind", "x", "y"],
+        },
+    },
+}
+CHART_TOOLS = [TOOLS[0], MAKE_CHART]  # describe_data + make_chart

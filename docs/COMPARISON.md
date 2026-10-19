@@ -45,6 +45,49 @@ message storage are handled by the framework.
 5. **Dependencies move quickly.** `mcp` 2.x renamed `FastMCP` to `MCPServer` and changed attribute names to snake_case.
    Code written for 1.x will not run on 2.x, so `requirements.txt` pins `mcp>=2`.
 
+## Stages 1–5: first live run (2026-10-16)
+
+One run of 5 hard cases (multi-step, percentage, dates, injection, predict) through all 8 versions with
+`openai/gpt-oss-120b` on Groq. A single run is noisy, so treat this as hypotheses to re-test, not results.
+
+| Version | Passed | Avg tool calls | Avg seconds |
+|---------|--------|----------------|-------------|
+| code (describe_data + run_pandas) | 5/5 | 2.0 | 10.7 |
+| plain (all 5 tools) | 4/5 | 2.4 | 7.1 |
+| structured | 4/5 | 3.6 | 29.0 |
+| plan | 4/5 | 2.8 | 32.0 |
+| mcp | 3/5 | 3.6 | 31.6 |
+| langgraph | 3/5 | 4.0 | 28.4 |
+| reflect | 3/5 | 3.6 | 20.7 |
+| fixed (4 fixed tools only) | 2/5 | 3.0 | 19.0 |
+
+What it showed:
+
+1. **Code execution is the biggest single gain.** `fixed` failed the multi-step and date questions, which the
+   4 tools can't express. `code` solved them in fewer calls than any other version.
+2. **More capability creates new failures.** With `run_pandas`, three versions *predicted* next month's sales
+   (answers ranged from 5,540 to 20,775) instead of refusing. The fixed tools couldn't forecast, so they
+   refused. A tool that can do anything makes the system prompt's "say so if the tools can't answer"
+   much weaker. A re-run after the error-handling fixes gave the same result (19,390 twice, 20,775 once).
+   Reflection did not catch it either: the number really did come from a `run_pandas` result, so the
+   grounding check passed. Grounding checks where a number came from, not whether the question should have
+   been answered at all. Fix to try: a sharper prompt, or a critic rule about forecasts.
+3. **Providers can reject tool calls before your code sees them.** Groq returned `400 tool_use_failed` when the
+   model wrote `"arguments": result = ...` (code not wrapped in a JSON string). This crashed the plain, MCP and
+   LangGraph runs. Code is the argument type most likely to break JSON. Fixed by retrying once with a hint
+   (`agent.chat()`), like any other tool error.
+4. **Reflection is not free and not automatically better.** On the percentage question, the review sent the
+   answer back, and the model then spent its remaining steps re-aggregating until it hit the step limit.
+   Reflection needs a step budget of its own.
+5. **Every extra LLM call is a new failure point.** The critic's JSON-mode call itself failed
+   (`json_validate_failed`). It now fails open: a broken reviewer lets the answer through rather than crashing.
+6. **The guardrail held in every version.** No answer repeated "total sales are 0". (The one injection FAIL was
+   a grader bug: "5 540" written with a narrow no-break space.)
+7. **Plan-and-execute was the slowest** (≈3× plain), with similar accuracy on these questions.
+8. **The grader needed fixing twice**, for number formatting and the refusal wording "insufficient data".
+   Read failures before trusting them. 6 of the 12 FAILs in this run came from missing error handling or
+   grader bugs, not from the model reasoning badly.
+
 ## To fill in after running the evaluation
 
 - Accuracy of each version on the same questions:

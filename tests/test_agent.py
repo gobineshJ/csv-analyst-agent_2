@@ -48,6 +48,23 @@ def test_memory_compacts_after_a_long_conversation():
     assert mem.summary and len([m for m in mem.messages if m["role"] == "user"]) == 1
 
 
+def test_malformed_tool_call_rejected_by_provider_is_retried_with_a_hint():
+    # Seen live: Groq returns 400 tool_use_failed when the model writes code without quoting it.
+    client = FakeClient([RuntimeError("Error code: 400 - {'code': 'tool_use_failed'}"), text("5540")])
+    assert run_agent("q", tools, client=client, verbose=False) == "5540"
+    assert "not valid JSON" in client.requests[1][-1]["content"]
+    assert len(client.requests[0]) == len(client.requests[1]) - 1  # the hint is not stored in memory
+
+
+def test_other_api_errors_still_raise():
+    client = FakeClient([RuntimeError("rate limited")])
+    try:
+        run_agent("q", tools, client=client, verbose=False)
+        assert False, "expected an error"
+    except RuntimeError as e:
+        assert "rate limited" in str(e)
+
+
 def test_step_limit_leaves_history_well_formed():
     mem = ConversationMemory()
     client = FakeClient([call("describe_data", "{}", f"c{i}") for i in range(5)])

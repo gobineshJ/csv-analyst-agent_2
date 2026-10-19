@@ -15,8 +15,13 @@ class FakeClient:
     def __init__(self, responses):
         self.responses = list(responses)
         self.requests = []  # messages sent on each call, for assertions
+        self.kwargs = []    # everything else sent (tools, response_format, ...)
         self.chat = NS(completions=NS(create=self._create))
 
     def _create(self, **kw):
         self.requests.append(list(kw["messages"]))
-        return self.responses.pop(0)
+        self.kwargs.append(kw)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):  # script an API error
+            raise response
+        return response

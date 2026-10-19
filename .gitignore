@@ -2,3 +2,8 @@
 .env
 __pycache__/
 .pytest_cache/
+venv/
+outputs/
+traces/
+*.db
+eval/results.json

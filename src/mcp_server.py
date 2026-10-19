@@ -9,6 +9,7 @@ from typing import Literal
 
 from mcp.server.mcpserver import MCPServer
 
+from src.schemas import RUN_PANDAS_DESCRIPTION
 from src.tools import CsvTools
 
 path = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("CSV_PATH", "data/sample_sales.csv")
@@ -45,6 +46,12 @@ def filter_rows(column: str, op: str, value: str) -> dict:
 def top_n(column: str, n: int = 5, ascending: bool = False) -> dict:
     """Return the top N rows sorted by a column (descending by default)."""
     return csv.top_n(column, n, ascending)
+
+
+@mcp.tool(description=RUN_PANDAS_DESCRIPTION)
+def run_pandas(code: str) -> dict:
+    # The server runs the code; approving it is the client's job (see agent_mcp.py).
+    return csv.run_pandas(code)
 
 
 if __name__ == "__main__":

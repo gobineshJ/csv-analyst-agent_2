@@ -60,6 +60,21 @@ def test_step_limit_then_followup_has_no_dangling_tool_call():
     assert_no_dangling_tool_calls(llm.seen[-1])
 
 
+def test_malformed_tool_call_rejected_by_provider_is_retried():
+    class Flaky(FakeChat):
+        failed: bool = False
+
+        def _generate(self, messages, stop=None, run_manager=None, **kw):
+            if not self.failed:
+                self.failed = True
+                raise RuntimeError("Error code: 400 - tool_use_failed")
+            return super()._generate(messages, stop, run_manager, **kw)
+
+    llm = Flaky(script=[AIMessage(content="ok")], seen=[])
+    assert run_agent_langgraph("q", build_graph(csv, llm), verbose=False) == "ok"
+    assert "not valid JSON" in llm.seen[0][-1].content
+
+
 def test_unknown_tool_does_not_crash():
     llm, g = make([ai_call("rm_rf", {}), AIMessage(content="cannot")])
     assert run_agent_langgraph("q", g, verbose=False) == "cannot"
