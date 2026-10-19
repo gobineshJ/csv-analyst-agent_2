@@ -9,3 +9,6 @@ langchain-core
 pydantic>=2
 matplotlib
 langgraph-checkpoint-sqlite
+fastapi
+uvicorn
+httpx

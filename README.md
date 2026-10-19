@@ -21,6 +21,7 @@ A small AI agent that answers plain-English questions about a CSV file by callin
 | 7 | Multi-agent: orchestrator + specialists | `src/multi_agent.py`, `src/charts.py` |
 | 8 | Long-term memory (SQLite) and retrieval over a data dictionary (RAG) | `src/long_memory.py`, `data/data_dictionary.md` |
 | 9 | Autonomy: goal -> plan -> work -> verified report, with checkpoints, retries and a budget | `src/autonomous.py`, `main_report.py` |
+| 10 | Web app: streaming, approvals across HTTP requests, persistent sessions | `src/web_app.py`, `src/static/index.html`, `main_web.py` |
 
 ## How the agent works
 
@@ -52,6 +53,7 @@ csv-analyst-agent/
 ├── main_langgraph.py       # LangGraph agent, command-line chat
 ├── main_plan.py            # plan-and-execute agent, command-line chat
 ├── main_report.py          # autonomous report agent
+├── main_web.py             # web app: http://127.0.0.1:8000
 ├── CLAUDE.md               # standing instructions for Claude Code in this repo
 ├── data/
 │   ├── sample_sales.csv
@@ -75,7 +77,9 @@ csv-analyst-agent/
 │   ├── multi_agent.py      # stage 7: orchestrator + analyst/chart specialists
 │   ├── charts.py           # stage 7: make_chart tool (matplotlib)
 │   ├── long_memory.py      # stage 8: SQLite memory + BM25 retrieval
-│   └── autonomous.py       # stage 9: goal-driven report agent
+│   ├── autonomous.py       # stage 9: goal-driven report agent
+│   ├── web_app.py          # stage 10: FastAPI server (sessions, SSE streaming, approvals)
+│   └── static/index.html   # stage 10: the page (plain JavaScript, no build step)
 ├── tests/                  # run without an API key
 ├── eval/
 │   ├── run_eval.py         # runs questions through every version, grades against pandas
@@ -179,6 +183,24 @@ The parts that make running unattended safe:
 - **Retries.** A failed task is retried with exponential backoff, then marked FAILED, and the report is still written.
 - **Budget.** LLM calls and seconds are limited (`--max-calls`, `--max-seconds`).
 - **Oversight at the plan level.** You approve the plan, not every step.
+
+## Stage 10: web app (`src/web_app.py`, `main_web.py`)
+
+`python main_web.py`, then open http://127.0.0.1:8000. You can start conversations about any CSV in `data/`, watch tool calls stream in, and approve, edit or reject code before it runs.
+
+What changes when an agent leaves the terminal:
+
+- **No blocking for a human.** The terminal versions wait on `input()`. A web server can't hold a request open while someone decides. So the LangGraph agent pauses at `interrupt()` and its state is saved in SQLite (`web.db`). The response ends with an `approval` event, and a *later* request (`POST /decide`) resumes it. This is why stage 5 used `interrupt()` and stage 8 added `SqliteSaver`. The pause survives a page reload and a server restart.
+- **Streaming.** Answers take seconds, so events are sent as they happen with Server-Sent Events. They come from the same `stream_events()` generator the terminal version prints.
+- **Sessions.** Each conversation is a LangGraph thread and is listed in the sidebar. The open conversation is kept in the URL (`#<id>`).
+- **Untrusted input in both directions.**
+  - The browser picks a CSV by name from a fixed list and never sends a path, so it can't read other files.
+  - The page inserts everything the agent says as text, never as HTML, because answers can echo CSV cells.
+- **Cost per answer.** Each answer shows LLM calls, tokens and cost, from the stage-6 tracer attached through LangChain callbacks.
+
+API: `GET /api/datasets`, `GET/POST /api/sessions`, `GET /api/sessions/{id}` (history + pending approval), `POST /api/sessions/{id}/ask` and `/decide` (both stream events).
+
+It has no login, so it listens on 127.0.0.1 only. Don't expose it to a network as it is.
 
 ## Memory
 

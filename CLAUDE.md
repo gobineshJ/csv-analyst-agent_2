@@ -15,7 +15,10 @@ agents work, so clarity beats cleverness. Map of stages to files: README.md.
   `--versions`), never `--versions all` on all cases unless asked. Write scratch runs with `--out` to a temp
   path; `eval/results.md` is the user's.
 - Each `main*.py` is an interactive chat (`input()`); they can't be driven non-interactively, except
-  `main_report.py --yes`.
+  `main_report.py --yes` and `main_web.py` (a server on 127.0.0.1:8000; drive it with curl against
+  `/api/...`, start it in the background and stop it when done). Web tests use FastAPI's TestClient.
+- Screenshots: headless Edge works, but its minimum viewport is 496 px; narrower `--window-size` values
+  just crop the image, so test phone layouts at 496.
 
 ## Conventions
 

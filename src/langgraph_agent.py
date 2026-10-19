@@ -126,25 +126,32 @@ def _run(graph, inputs, thread_id, max_steps, verbose, ask):
     return answer if pending is None else f"Waiting for approval: {pending}"
 
 
-def _stream(graph, inputs, thread_id, max_steps, verbose):
-    """Run the graph until it finishes or pauses. Returns (answer, interrupt request or None)."""
-    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 2 * max_steps + 1}
-    answer, pending = "Stopped: hit the step limit.", None
+STEP_LIMIT = "Stopped: hit the step limit."
+
+
+def stream_events(graph, inputs, thread_id="default", max_steps=8, callbacks=None):
+    """Run the graph until it finishes or pauses, yielding events as they happen:
+        {"type": "call", "name", "args"}   the model asked for a tool
+        {"type": "result", "name", "content"}
+        {"type": "answer", "text"}
+        {"type": "approval", "request"}    paused at interrupt(); resume with Command(resume=...)
+    The terminal version prints these (_stream); the web app sends them to the browser."""
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 2 * max_steps + 1,
+              "callbacks": callbacks or []}
     try:
         for update in graph.stream(inputs, config, stream_mode="updates"):
             if "__interrupt__" in update:
-                pending = update["__interrupt__"][0].value
+                yield {"type": "approval", "request": update["__interrupt__"][0].value}
                 continue
             for node_output in update.values():
                 for m in (node_output or {}).get("messages", []):
                     if isinstance(m, AIMessage):
                         for tc in m.tool_calls:
-                            if verbose:
-                                print(f"CALL   {tc['name']} {tc['args']}")
+                            yield {"type": "call", "name": tc["name"], "args": tc["args"]}
                         if not m.tool_calls:
-                            answer = m.content
-                    elif isinstance(m, ToolMessage) and verbose:
-                        print(f"RESULT {str(m.content)[:200]}")
+                            yield {"type": "answer", "text": m.content}
+                    elif isinstance(m, ToolMessage):
+                        yield {"type": "result", "name": m.name, "content": str(m.content)}
     except GraphRecursionError:
         # The thread now ends with a tool call that never ran. Close it, or the next
         # question on this thread would send a tool call with no result to the API.
@@ -152,5 +159,20 @@ def _stream(graph, inputs, thread_id, max_steps, verbose):
         if isinstance(last, AIMessage) and last.tool_calls:
             closing = [ToolMessage("Stopped: step limit reached before this tool ran.",
                                    tool_call_id=tc["id"]) for tc in last.tool_calls]
-            graph.update_state(config, {"messages": closing + [AIMessage(answer)]})
+            graph.update_state(config, {"messages": closing + [AIMessage(STEP_LIMIT)]})
+        yield {"type": "answer", "text": STEP_LIMIT}
+
+
+def _stream(graph, inputs, thread_id, max_steps, verbose):
+    """Run the graph until it finishes or pauses. Returns (answer, interrupt request or None)."""
+    answer, pending = STEP_LIMIT, None
+    for e in stream_events(graph, inputs, thread_id, max_steps):
+        if e["type"] == "call" and verbose:
+            print(f"CALL   {e['name']} {e['args']}")
+        elif e["type"] == "result" and verbose:
+            print(f"RESULT {e['content'][:200]}")
+        elif e["type"] == "answer":
+            answer = e["text"]
+        elif e["type"] == "approval":
+            pending = e["request"]
     return answer, pending
