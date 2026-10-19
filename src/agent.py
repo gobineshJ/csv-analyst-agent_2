@@ -14,8 +14,15 @@ SUMMARY_PROMPT = ("Summarize this conversation about a CSV file in under 150 wor
                   "Keep every column name, number and conclusion exactly as stated. "
                   "Do not add anything that is not in the conversation.")
 REVIEW_PREFIX = "[Automatic review of your answer]"
-TOOL_JSON_HINT = ("Your last tool call was rejected because its arguments were not valid JSON. "
-                  'Arguments must be a JSON object, e.g. {"code": "result = df.sales.sum()"}. Try again.')
+TOOL_JSON_HINT = ("Your last reply was rejected because it could not be parsed: tool-call arguments were "
+                  'not valid JSON. Arguments must be a JSON object, e.g. {"code": "result = df.sales.sum()"}. '
+                  "Try again.")
+# Groq rejects unparseable model output with HTTP 400 before our code sees it. Both seen live.
+RETRYABLE_ERRORS = ("tool_use_failed", "output_parse_failed")
+
+
+def is_retryable(error):
+    return any(code in str(error) for code in RETRYABLE_ERRORS)
 
 _client = None
 
@@ -43,13 +50,13 @@ def llm_summarizer(client=None):
 
 
 def chat(client, messages, schemas):
-    """One model call. Groq checks tool-call JSON itself and returns HTTP 400 `tool_use_failed`
-    when the model writes broken arguments (common with code). Treat that like a tool error:
-    tell the model and let it try once more, instead of crashing the whole run."""
+    """One model call. Groq parses the model's output itself and returns HTTP 400
+    (`tool_use_failed`, `output_parse_failed`) when it is broken, e.g. code not quoted as JSON.
+    Treat that like a tool error: tell the model and let it try once more, instead of crashing."""
     try:
         return client.chat.completions.create(model=MODEL, messages=messages, tools=schemas, max_tokens=1024)
     except Exception as e:
-        if "tool_use_failed" not in str(e):
+        if not is_retryable(e):
             raise
         return client.chat.completions.create(model=MODEL, tools=schemas, max_tokens=1024,
                                               messages=messages + [{"role": "user", "content": TOOL_JSON_HINT}])

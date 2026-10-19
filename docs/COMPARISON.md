@@ -88,6 +88,30 @@ What it showed:
    Read failures before trusting them. 6 of the 12 FAILs in this run came from missing error handling or
    grader bugs, not from the model reasoning badly.
 
+## Stages 7–8: plain vs multi-agent vs long-term memory (2026-10-19)
+
+One run of 4 cases with `openai/gpt-oss-120b` on Groq. Tokens and cost come from the stage-6 tracer.
+
+| Version | Passed | Avg LLM calls | Avg tokens | Avg seconds |
+|---------|--------|---------------|------------|-------------|
+| plain | 2/4 | 4.8 | 3,307 | 10.4 |
+| multi | 2/4 | 5.8 | 3,512 | 24.7 |
+| longmem | 4/4 | 5.0 | 3,629 | 26.9 |
+
+1. **Retrieval supplies knowledge the data doesn't have.** `big_orders` passed only in `longmem`, which retrieved
+   the data-dictionary definition (sales ≥ 900). `plain` and `multi` correctly refused rather than guessing a
+   threshold. Refusing was right; being able to answer was better.
+2. **Memory between sessions works where the session summary used to fail.** `longmem` ran every turn as a
+   brand-new session and still answered "the same figure as my first question" (1,600), because recall always
+   includes the most recent notes, not only keyword matches.
+3. **Multi-agent cost more and gained nothing here.** It averaged 2.4× the time of `plain`, with the same
+   accuracy. On the memory question it failed twice over: the specialists have no conversation memory, and
+   the orchestrator read "figure" as a chart. Splitting work pays off when tasks are big and different, not
+   for short single-number questions.
+4. **A third provider error appeared.** Groq returned `output_parse_failed` (unparseable model output) on the
+   percentage question, which crashed `plain`. It is now retried like `tool_use_failed`, with a regression test.
+   Each new model behaviour seen live tends to need its own handling, which is why live evals matter.
+
 ## To fill in after running the evaluation
 
 - Accuracy of each version on the same questions:

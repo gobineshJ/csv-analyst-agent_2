@@ -15,7 +15,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.types import Command, interrupt
 
-from src.agent import MODEL, SYSTEM, TOOL_JSON_HINT
+from src.agent import MODEL, SYSTEM, TOOL_JSON_HINT, is_retryable
 from src.hitl import apply_decision
 from src.schemas import RUN_PANDAS_DESCRIPTION
 
@@ -93,7 +93,7 @@ def build_graph(csv, llm=None, max_context_tokens=3000, approve_code=False, chec
         try:
             reply = model.invoke(messages)
         except Exception as e:  # broken tool-call JSON: same one retry as agent.chat()
-            if "tool_use_failed" not in str(e):
+            if not is_retryable(e):
                 raise
             reply = model.invoke(messages + [HumanMessage(TOOL_JSON_HINT)])
         return {"messages": [reply]}

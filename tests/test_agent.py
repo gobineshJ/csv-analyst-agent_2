@@ -56,6 +56,12 @@ def test_malformed_tool_call_rejected_by_provider_is_retried_with_a_hint():
     assert len(client.requests[0]) == len(client.requests[1]) - 1  # the hint is not stored in memory
 
 
+def test_output_parse_failed_is_retried_too():
+    # Seen live (2026-10-19): Groq returned 400 output_parse_failed on the percentage question.
+    client = FakeClient([RuntimeError("Error code: 400 - {'code': 'output_parse_failed'}"), text("49.8%")])
+    assert run_agent("q", tools, client=client, verbose=False) == "49.8%"
+
+
 def test_other_api_errors_still_raise():
     client = FakeClient([RuntimeError("rate limited")])
     try:
