@@ -31,7 +31,7 @@ def make_chart(df, kind, x, y, how="sum", title="", out_dir=OUT_DIR):
     if kind == "pie":
         ax.pie(data.values, labels=[str(i) for i in data.index], autopct="%1.0f%%")
     else:
-        data.plot(kind=kind, ax=ax)
+        data.plot(kind=kind, ax=ax, rot=0 if len(data) <= 6 else 45)  # readable labels, not sideways
         ax.set_xlabel(x)
         ax.set_ylabel(f"{how} of {y}")
     ax.set_title(title)

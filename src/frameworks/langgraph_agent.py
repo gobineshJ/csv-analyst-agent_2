@@ -21,7 +21,7 @@ from src.paths import runtime_file
 from src.patterns.hitl import apply_decision
 
 
-def make_tools(csv, approve_code=False):
+def make_tools(csv, approve_code=False, charts=False):
     """Wrap the same CsvTools methods as LangChain tools. Docstrings become the descriptions."""
 
     @tool
@@ -60,7 +60,14 @@ def make_tools(csv, approve_code=False):
             code = args["code"]
         return csv.run_pandas(code)
 
-    return [describe_data, aggregate, filter_rows, top_n, run_pandas]
+    @tool
+    def make_chart(kind: Literal["bar", "line", "pie"], x: str, y: str,
+                   how: Literal["sum", "mean", "count", "max", "min"] = "sum", title: str = "") -> dict:
+        """Save a chart of column y aggregated by column x as a PNG. Returns the file path and the
+        plotted numbers; describe the chart using those numbers. Use only when the user asks for a chart."""
+        return csv.make_chart(kind, x, y, how, title)
+
+    return [describe_data, aggregate, filter_rows, top_n, run_pandas] + ([make_chart] if charts else [])
 
 
 def make_llm(callbacks=None):
@@ -76,9 +83,10 @@ def sqlite_checkpointer(path=None):
     return SqliteSaver(sqlite3.connect(path or runtime_file("langgraph.db"), check_same_thread=False))
 
 
-def build_graph(csv, llm=None, max_context_tokens=3000, approve_code=False, checkpointer=None):
-    """checkpointer: where thread state lives. Default MemorySaver (RAM, lost on exit)."""
-    tools = make_tools(csv, approve_code)
+def build_graph(csv, llm=None, max_context_tokens=3000, approve_code=False, checkpointer=None, charts=False):
+    """checkpointer: where thread state lives. Default MemorySaver (RAM, lost on exit).
+    charts: also give the model make_chart (the web app does; the eval versions do not)."""
+    tools = make_tools(csv, approve_code, charts)
     llm = llm or make_llm()
     model = llm.bind_tools(tools)
 

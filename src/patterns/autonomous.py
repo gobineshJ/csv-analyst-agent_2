@@ -85,8 +85,9 @@ def save_state(path, state):
 
 
 def run_autonomous(goal, tools, client=None, out_dir=OUT_DIR, budget=None, approve_plan=None,
-                   approve=None, max_retries=2, sleep=time.sleep, verbose=True):
-    """Work towards the goal. Returns the final state dict (status, results, report_path, totals)."""
+                   approve=None, max_retries=2, sleep=time.sleep, verbose=True, on_log=None):
+    """Work towards the goal. Returns the final state dict (status, results, report_path, totals).
+    on_log(message) is called for every progress line (the web app streams them to the page)."""
     out = Path(out_dir)
     ckpt = out / "checkpoint.json"
     tracer = Tracer(budget=budget)
@@ -97,6 +98,8 @@ def run_autonomous(goal, tools, client=None, out_dir=OUT_DIR, budget=None, appro
         state["log"].append(f"{time.strftime('%H:%M:%S')} {msg}")
         if verbose:
             print(f"AUTO   {msg}")
+        if on_log:
+            on_log(msg)
 
     try:
         if not state["tasks"]:
@@ -160,8 +163,9 @@ def write_report(goal, state, llm, out, log):
         if still := ungrounded_numbers(report, [results], goal):
             report += ("\n\n---\n**Unverified:** these numbers could not be traced to a tool result: "
                        + ", ".join(f"{n:g}" for n in still))
-    # Charts are saved in OUT_DIR; the report lives there too, so link relatively.
-    report = report.replace(f"]({Path(OUT_DIR).as_posix()}/", "](")
+    # Charts are saved in OUT_DIR; link to them relative to wherever the report is written.
+    prefix = Path(os.path.relpath(OUT_DIR, out)).as_posix()
+    report = report.replace(f"]({Path(OUT_DIR).as_posix()}/", "](" + ("" if prefix == "." else prefix + "/"))
     path = out / "report.md"
     path.write_text(report, encoding="utf-8")
     log(f"report written to {path.as_posix()}")

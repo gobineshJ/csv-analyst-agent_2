@@ -3,238 +3,87 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CSV Analyst Agent</title>
-<style>
-  :root {
-    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e4e3de;
-    --accent: #2f6fdb; --accent-text: #ffffff; --user: #e8effc; --warn-bg: #fff6e0; --warn-line: #e9c46a;
-    --err-bg: #fdecec; --err-text: #9b1c1c; --code-bg: #f1f0ec; --ok: #2e7d4f;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #161615; --panel: #1f1f1d; --text: #ebeae6; --muted: #9a9993; --line: #33332f;
-      --accent: #6b9cf0; --accent-text: #0f1420; --user: #23304a; --warn-bg: #3a3120; --warn-line: #8c7232;
-      --err-bg: #3d1f1f; --err-text: #f2b8b8; --code-bg: #2a2a27; --ok: #6cc28f;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .app { display: grid; grid-template-columns: 260px minmax(0, 1fr); height: 100vh; }
-  .app > * { min-width: 0; }  /* long tool output must wrap, not widen the page */
-  aside { border-right: 1px solid var(--line); background: var(--panel); padding: 16px; overflow-y: auto; }
-  aside h1 { font-size: 16px; margin: 0 0 12px; }
-  .new { display: flex; gap: 6px; margin-bottom: 16px; }
-  select, input, textarea, button { font: inherit; color: inherit; }
-  select, input, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
-  select { flex: 1; min-width: 0; }
-  button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
-  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  button:disabled { opacity: .5; cursor: default; }
-  .sessions button { display: block; width: 100%; text-align: left; border: 0; margin: 2px 0; padding: 8px 10px; }
-  .sessions button.active { background: var(--user); }
-  .sessions small { display: block; color: var(--muted); font-size: 12px; }
-  main { display: flex; flex-direction: column; min-width: 0; }
-  #log { flex: 1; overflow-y: auto; padding: 20px 24px; }
-  .empty { color: var(--muted); max-width: 520px; margin: 40px auto; text-align: center; }
-  .msg { max-width: 760px; margin: 0 auto 14px; }
-  .bubble { padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; }
-  .user .bubble { background: var(--user); border-color: transparent; margin-left: 15%; }
-  .step { font: 13px/1.4 ui-monospace, Consolas, monospace; color: var(--muted); margin: 2px auto; }
-  .step details summary { cursor: pointer; overflow-wrap: anywhere; }
-  .step pre, .approval pre { background: var(--code-bg); padding: 8px; border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
-  .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
-  .approval { border: 1px solid var(--warn-line); background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; }
-  .approval textarea { width: 100%; min-height: 90px; font: 13px ui-monospace, Consolas, monospace; margin: 8px 0; }
-  .approval .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .approval .row input { flex: 1; min-width: 140px; }
-  .error .bubble { background: var(--err-bg); color: var(--err-text); border-color: transparent; }
-  form.ask { display: flex; gap: 8px; padding: 12px 24px 18px; border-top: 1px solid var(--line); background: var(--panel); }
-  form.ask input { flex: 1; min-width: 0; }
-  @media (max-width: 700px) {
-    .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
-    aside { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
-    #log { padding: 16px; }
-    form.ask { padding: 12px 16px; }
-    .user .bubble { margin-left: 0; }
-  }
-</style>
+<title>CSV Analyst</title>
+<link rel="stylesheet" href="/static/app.css">
+<script type="module" src="/static/app.js"></script>
 </head>
 <body>
-<div class="app">
-  <aside>
-    <h1>CSV Analyst Agent</h1>
-    <div class="new">
-      <select id="dataset" aria-label="Dataset"></select>
-      <button id="newBtn" class="primary">New</button>
+<div class="app" id="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">▦</span>
+      <span>CSV Analyst</span>
+      <button class="icon only-mobile" id="closeSidebar" aria-label="Close menu">✕</button>
     </div>
-    <div class="sessions" id="sessions"></div>
+
+    <label class="field-label" for="dataset">Dataset</label>
+    <div class="dataset-row">
+      <select id="dataset"></select>
+      <button class="icon" id="previewBtn" title="Preview data" aria-label="Preview data">⊞</button>
+    </div>
+    <div class="side-actions">
+      <button class="primary" id="newChat">＋ New chat</button>
+      <button id="uploadBtn" title="Upload a CSV file">Upload CSV</button>
+      <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
+    </div>
+
+    <div class="field-label">Conversations</div>
+    <nav class="sessions" id="sessions" aria-label="Conversations"></nav>
+
+    <footer class="side-footer">
+      Runs locally · model <code>gpt-oss-120b</code> on Groq
+    </footer>
   </aside>
-  <main>
-    <div id="log"><p class="empty">Start a new conversation, pick a CSV, and ask a question.
-      Tool calls stream in as the agent works. Before it runs code it writes itself, it stops and asks you.</p></div>
-    <form class="ask" id="askForm">
-      <input id="question" placeholder="Ask about the data…" autocomplete="off" disabled>
-      <button class="primary" id="sendBtn" disabled>Send</button>
-    </form>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon only-mobile" id="openSidebar" aria-label="Open menu">☰</button>
+      <div class="title" id="title">New chat</div>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tabChat" aria-selected="true">Chat</button>
+        <button role="tab" id="tabReport" aria-selected="false">Report</button>
+      </div>
+    </header>
+
+    <!-- Chat -->
+    <section class="view" id="chatView">
+      <div class="thread" id="thread"></div>
+      <form class="composer" id="composer">
+        <textarea id="question" rows="1" placeholder="Ask about your data…" aria-label="Question"></textarea>
+        <button class="primary" id="sendBtn" type="submit">Send</button>
+      </form>
+      <p class="hint">Enter to send · Shift+Enter for a new line · the agent asks before running code it wrote</p>
+    </section>
+
+    <!-- Report -->
+    <section class="view" id="reportView" hidden>
+      <div class="report-scroll">
+        <div class="report-form card">
+          <h2>Autonomous report</h2>
+          <p class="muted">The agent plans the work, runs each task with specialist agents, writes a report and checks
+            every number in it against the tool results. Capped at 40 model calls.</p>
+          <textarea id="goal" rows="2">Write a short sales report with 3 key insights and one chart.</textarea>
+          <div class="row">
+            <span class="muted" id="reportDataset"></span>
+            <button class="primary" id="runReport">Run report</button>
+          </div>
+        </div>
+        <div id="reportProgress"></div>
+        <article class="report-doc card" id="reportDoc" hidden></article>
+      </div>
+    </section>
   </main>
 </div>
-<script>
-const $ = (id) => document.getElementById(id);
-let current = null;   // session id
-let busy = false;
 
-// Everything from the agent is inserted as TEXT (textContent), never as HTML:
-// answers can echo CSV cells, and a cell could contain <script>.
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
-function add(node) { $("log").append(node); $("log").scrollTop = $("log").scrollHeight; return node; }
-// **bold** is the only Markdown the model uses much. Build it from text nodes, still never HTML.
-function richText(text) {
-  const box = el("div", "bubble");
-  for (const part of String(text).split(/(\*\*[^*\n]+\*\*)/)) {
-    box.append(part.startsWith("**") && part.endsWith("**") && part.length > 4
-      ? el("strong", "", part.slice(2, -2)) : document.createTextNode(part));
-  }
-  return box;
-}
-function bubble(role, text) { const m = el("div", "msg " + role); m.append(richText(text)); return add(m); }
-function short(v) { const s = typeof v === "string" ? v : JSON.stringify(v); return s.length > 120 ? s.slice(0, 120) + "…" : s; }
+<dialog id="previewDialog">
+  <div class="dialog-head">
+    <h2 id="previewTitle">Preview</h2>
+    <button class="icon" id="closePreview" aria-label="Close">✕</button>
+  </div>
+  <div id="previewBody"></div>
+</dialog>
 
-function step(kind, name, detail) {
-  const m = el("div", "msg step");
-  const d = el("details");
-  d.append(el("summary", "", (kind === "call" ? "→ " + name + " " : "← " + name + " ") + short(detail)));
-  d.append(el("pre", "", typeof detail === "string" ? detail : JSON.stringify(detail, null, 2)));
-  m.append(d);
-  return add(m);
-}
-
-function approvalCard(request) {
-  const m = el("div", "msg");
-  const card = el("div", "approval");
-  card.append(el("strong", "", "The agent wants to run " + request.tool + ". Allow it?"));
-  const code = el("textarea");
-  code.value = request.args.code || JSON.stringify(request.args);
-  code.setAttribute("aria-label", "Code to run");
-  const reason = el("input");
-  reason.placeholder = "Reason, if rejecting";
-  const row = el("div", "row");
-  const approve = el("button", "primary", "Approve");
-  const reject = el("button", "", "Reject");
-  row.append(approve, reject, reason);
-  card.append(code, row);
-  m.append(card);
-  const original = code.value;
-  approve.onclick = () => {
-    const edited = code.value !== original;
-    card.replaceWith(el("div", "meta", edited ? "You edited and approved the code." : "You approved the code."));
-    send("decide", edited ? { action: "edit", code: code.value } : { action: "approve" });
-  };
-  reject.onclick = () => {
-    card.replaceWith(el("div", "meta", "You rejected the code" + (reason.value ? ": " + reason.value : ".")));
-    send("decide", { action: "reject", reason: reason.value || "not approved" });
-  };
-  return add(m);
-}
-
-function render(e) {
-  if (e.type === "call") step("call", e.name, e.args);
-  else if (e.type === "result") step("result", e.name, e.content);
-  else if (e.type === "answer") bubble("assistant", e.text);
-  else if (e.type === "approval") approvalCard(e.request);
-  else if (e.type === "error") bubble("error", e.message);
-  else if (e.type === "usage") add(el("div", "msg meta",
-      `${e.llm_calls} LLM call(s) · ${e.input_tokens + e.output_tokens} tokens · ~$${e.cost_usd.toFixed(4)} · ${e.llm_seconds}s in the model`));
-}
-
-// fetch + a stream reader, because EventSource only supports GET.
-async function send(endpoint, body) {
-  setBusy(true);
-  try {
-    const resp = await fetch(`/api/sessions/${current}/${endpoint}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (!resp.ok) { bubble("error", (await resp.json()).detail || resp.statusText); return; }
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop();
-      for (const part of parts) if (part.startsWith("data: ")) render(JSON.parse(part.slice(6)));
-    }
-  } catch (err) {
-    bubble("error", "Connection problem: " + err.message);
-  } finally {
-    setBusy(false);
-    loadSessions();
-  }
-}
-
-function setBusy(value) {
-  busy = value;
-  const waiting = !!document.querySelector(".approval");
-  $("question").disabled = $("sendBtn").disabled = busy || !current || waiting;
-  if (!$("question").disabled) $("question").focus();
-}
-
-async function loadSessions() {
-  const list = await (await fetch("/api/sessions")).json();
-  const box = $("sessions");
-  box.replaceChildren();
-  for (const s of list) {
-    const b = el("button", s.id === current ? "active" : "", s.title);
-    b.append(el("small", "", s.csv + " · " + new Date(s.created * 1000).toLocaleString()));
-    b.onclick = () => openSession(s.id);
-    box.append(b);
-  }
-}
-
-async function openSession(id) {
-  const resp = await fetch(`/api/sessions/${id}`);
-  if (!resp.ok) { location.hash = ""; return; }
-  const s = await resp.json();
-  current = id;
-  location.hash = id;   // a reload reopens the same conversation
-  $("log").replaceChildren();
-  if (!s.messages.length) add(el("p", "empty", `New conversation about ${s.csv}. Ask a question.`));
-  for (const m of s.messages) {
-    if (m.role === "user" || m.role === "assistant") bubble(m.role, m.text);
-    else step(m.role, m.name, m.role === "call" ? m.args : m.content);
-  }
-  for (const p of s.pending) approvalCard(p);   // a pause survives reloads and server restarts
-  setBusy(false);
-  loadSessions();
-}
-
-$("newBtn").onclick = async () => {
-  const resp = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" },
-                                              body: JSON.stringify({ csv: $("dataset").value }) });
-  openSession((await resp.json()).id);
-};
-
-$("askForm").onsubmit = (ev) => {
-  ev.preventDefault();
-  const q = $("question").value.trim();
-  if (!q || busy) return;
-  $("question").value = "";
-  if (document.querySelector("#log .empty")) $("log").replaceChildren();
-  bubble("user", q);
-  send("ask", { question: q });
-};
-
-(async () => {
-  for (const name of await (await fetch("/api/datasets")).json()) $("dataset").append(el("option", "", name));
-  if ([...$("dataset").options].some(o => o.value === "sample_sales.csv")) $("dataset").value = "sample_sales.csv";
-  if (location.hash.length > 1) openSession(location.hash.slice(1)); else loadSessions();
-})();
-</script>
+<div class="toast" id="toast" role="status" hidden></div>
 </body>
 </html>
